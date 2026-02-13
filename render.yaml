@@ -11,7 +11,7 @@ services:
     runtime: node
     nodeVersion: "20"
     buildCommand: chmod +x build.sh && ./build.sh
-    startCommand: cd apps/api && npx drizzle-kit push --force && cd ../.. && node apps/api/dist/index.js
+    startCommand: cd apps/api && npx drizzle-kit push --force && npx tsx src/db/seed.ts && cd ../.. && node apps/api/dist/index.js
     envVars:
       - key: NODE_ENV
         value: production
