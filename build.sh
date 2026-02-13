@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "==> Enabling corepack and pnpm..."
-corepack enable
-corepack prepare pnpm@9.15.4 --activate
+echo "==> Installing pnpm..."
+npm install -g pnpm@9.15.4
 
 echo "==> Installing dependencies..."
 pnpm install --no-frozen-lockfile
