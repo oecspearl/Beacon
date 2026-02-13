@@ -1,0 +1,73 @@
+version: "3.9"
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL + PostGIS
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: beacon-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: beacon
+      POSTGRES_PASSWORD: beacon
+      POSTGRES_DB: beacon
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U beacon -d beacon"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ---------------------------------------------------------------------------
+  # API Server
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: beacon-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      NODE_ENV: development
+      DATABASE_URL: postgresql://beacon:beacon@postgres:5432/beacon
+      JWT_SECRET: beacon-dev-secret-change-in-production
+      JWT_EXPIRES_IN: 7d
+      CORS_ORIGINS: http://localhost:5173,http://localhost:4173
+      LOG_LEVEL: debug
+    volumes:
+      # Mount source for hot-reload in development
+      - ./packages/shared/src:/app/packages/shared/src
+      - ./packages/protocol/src:/app/packages/protocol/src
+      - ./apps/api/src:/app/apps/api/src
+
+  # ---------------------------------------------------------------------------
+  # Dashboard (Vite dev server)
+  # ---------------------------------------------------------------------------
+  dashboard:
+    build:
+      context: .
+      dockerfile: apps/dashboard/Dockerfile
+    container_name: beacon-dashboard
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://api:3001
+    volumes:
+      # Mount source for hot-reload in development
+      - ./apps/dashboard/src:/app/apps/dashboard/src
+
+volumes:
+  pgdata:

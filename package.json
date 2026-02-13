@@ -1,0 +1,32 @@
+{
+  "name": "beacon",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Beacon — Emergency Response Application for Students Abroad",
+  "scripts": {
+    "mobile": "pnpm --filter @beacon/mobile",
+    "api": "pnpm --filter @beacon/api",
+    "dashboard": "pnpm --filter @beacon/dashboard",
+    "dev:api": "pnpm --filter @beacon/api dev",
+    "dev:dashboard": "pnpm --filter @beacon/dashboard dev",
+    "build:api": "pnpm --filter @beacon/api build",
+    "build:dashboard": "pnpm --filter @beacon/dashboard build",
+    "build:shared": "pnpm --filter @beacon/shared build",
+    "build:protocol": "pnpm --filter @beacon/protocol build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r clean",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:build": "docker compose build",
+    "docker:reset": "docker compose down -v && docker compose up -d",
+    "db:push": "pnpm --filter @beacon/api db:push",
+    "db:seed": "pnpm --filter @beacon/api db:seed"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.4"
+}

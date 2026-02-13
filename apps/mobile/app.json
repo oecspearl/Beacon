@@ -1,0 +1,73 @@
+{
+  "expo": {
+    "name": "Beacon",
+    "slug": "beacon",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "beacon",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1a1a2e"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "org.oecs.beacon",
+      "infoPlist": {
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Beacon needs your location to share it with emergency coordinators during a crisis.",
+        "NSLocationWhenInUseUsageDescription": "Beacon needs your location to show your position on the map and share it during emergencies.",
+        "NSBluetoothAlwaysUsageDescription": "Beacon uses Bluetooth to create mesh networks with nearby users when internet is unavailable.",
+        "NSBluetoothPeripheralUsageDescription": "Beacon uses Bluetooth to communicate with nearby devices in mesh mode.",
+        "NSMicrophoneUsageDescription": "Beacon can record audio during a panic event for safety documentation.",
+        "NSFaceIDUsageDescription": "Use Face ID to unlock Beacon.",
+        "UIBackgroundModes": ["location", "fetch", "bluetooth-central", "bluetooth-peripheral"]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1a1a2e"
+      },
+      "package": "org.oecs.beacon",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "BLUETOOTH",
+        "BLUETOOTH_ADMIN",
+        "BLUETOOTH_CONNECT",
+        "BLUETOOTH_SCAN",
+        "BLUETOOTH_ADVERTISE",
+        "SEND_SMS",
+        "RECORD_AUDIO",
+        "USE_BIOMETRIC",
+        "RECEIVE_BOOT_COMPLETED",
+        "FOREGROUND_SERVICE",
+        "WAKE_LOCK"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-local-authentication",
+      "expo-sqlite",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Beacon needs your location to share it with emergency coordinators during a crisis.",
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Beacon may use the camera for document scanning.",
+          "microphonePermission": "Beacon can record audio during a panic event."
+        }
+      ]
+    ]
+  }
+}
