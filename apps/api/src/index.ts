@@ -117,7 +117,7 @@ process.on("SIGINT", () => shutdown("SIGINT"));
 // Listen
 // ---------------------------------------------------------------------------
 
-server.listen(config.PORT, () => {
+server.listen(config.PORT, "0.0.0.0", () => {
   logger.info(
     {
       port: config.PORT,

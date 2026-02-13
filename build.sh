@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+echo "==> Enabling corepack and pnpm..."
+corepack enable
+corepack prepare pnpm@9.15.4 --activate
+
 echo "==> Installing dependencies..."
-npm install -g pnpm@9.15.4
-pnpm install --frozen-lockfile || pnpm install
+pnpm install --no-frozen-lockfile
 
 echo "==> Building shared packages..."
 pnpm --filter @beacon/shared build
@@ -14,8 +17,5 @@ pnpm --filter @beacon/dashboard build
 
 echo "==> Building API..."
 pnpm --filter @beacon/api build
-
-echo "==> Pushing database schema..."
-cd apps/api && npx drizzle-kit push --force && cd ../..
 
 echo "==> Build complete!"

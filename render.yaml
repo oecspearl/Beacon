@@ -9,13 +9,12 @@ services:
     name: beacon
     plan: free
     runtime: node
-    buildCommand: ./build.sh
-    startCommand: node apps/api/dist/index.js
+    nodeVersion: "20"
+    buildCommand: chmod +x build.sh && ./build.sh
+    startCommand: cd apps/api && npx drizzle-kit push --force && cd ../.. && node apps/api/dist/index.js
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 3001
       - key: DATABASE_URL
         fromDatabase:
           name: beacon-db
@@ -25,6 +24,6 @@ services:
       - key: JWT_EXPIRES_IN
         value: 7d
       - key: CORS_ORIGINS
-        value: ""
+        sync: false
       - key: LOG_LEVEL
         value: info
