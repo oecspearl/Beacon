@@ -4,8 +4,8 @@ set -euo pipefail
 echo "==> Installing pnpm..."
 npm install -g pnpm@9.15.4
 
-echo "==> Installing dependencies..."
-pnpm install --no-frozen-lockfile
+echo "==> Installing dependencies (including devDependencies for build)..."
+NODE_ENV=development pnpm install --no-frozen-lockfile
 
 echo "==> Building shared packages..."
 pnpm --filter @beacon/shared build
