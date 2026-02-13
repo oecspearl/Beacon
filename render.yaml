@@ -11,7 +11,13 @@ services:
     runtime: node
     nodeVersion: "20"
     buildCommand: chmod +x build.sh && ./build.sh
-    startCommand: cd apps/api && npx drizzle-kit push --force && npx tsx src/db/seed.ts && cd ../.. && node apps/api/dist/index.js
+    startCommand: >-
+      node -e "const pg=require('pg');(async()=>{for(let i=0;i<30;i++){try{const c=new pg.Client(process.env.DATABASE_URL);await c.connect();await c.end();console.log('DB ready');return}catch(e){console.log('Waiting for DB...',i);await new Promise(r=>setTimeout(r,2000))}}console.error('DB not ready after 60s');process.exit(1)})()"
+      && cd apps/api
+      && npx drizzle-kit push --force
+      && npx tsx src/db/seed.ts
+      && cd ../..
+      && node apps/api/dist/index.js
     envVars:
       - key: NODE_ENV
         value: production
