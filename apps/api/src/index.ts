@@ -21,7 +21,26 @@ const app: Express = express();
 // --- Security & parsing middleware -----------------------------------------
 app.use(
   helmet({
-    contentSecurityPolicy: config.NODE_ENV === "production" ? undefined : false,
+    contentSecurityPolicy:
+      config.NODE_ENV === "production"
+        ? {
+            directives: {
+              defaultSrc: ["'self'"],
+              scriptSrc: ["'self'", "'unsafe-inline'"],
+              styleSrc: ["'self'", "'unsafe-inline'"],
+              imgSrc: [
+                "'self'",
+                "data:",
+                "blob:",
+                "https://*.basemaps.cartocdn.com",
+                "https://*.openstreetmap.org",
+              ],
+              connectSrc: ["'self'", "wss:", "ws:"],
+              fontSrc: ["'self'", "data:"],
+              workerSrc: ["'self'", "blob:"],
+            },
+          }
+        : false,
   }),
 );
 app.use(
