@@ -6,6 +6,7 @@ import type {
   ActivityItem,
   DashboardStats,
   OperationMode,
+  ChatMessage,
 } from "@/stores/dashboard-store";
 
 let socket: Socket | null = null;
@@ -213,6 +214,37 @@ export function connectSocket(token: string): Socket {
       studentName: student?.name,
       description: `Checked in: ${payload.response}`,
       timestamp: payload.timestamp ?? new Date().toISOString(),
+    });
+  });
+
+  // Messages sync (initial load)
+  socket.on("messages:sync", (msgs: ChatMessage[]) => {
+    useDashboardStore.getState().setMessages(msgs);
+  });
+
+  // New message (real-time)
+  socket.on("message:new", (payload: {
+    id: string;
+    senderId: string;
+    recipientId?: string | null;
+    groupId?: string | null;
+    content: string;
+    priority: string;
+    channel: string;
+    createdAt: string;
+  }) => {
+    const store = useDashboardStore.getState();
+    const student = store.students.find((s) => s.id === payload.senderId);
+    store.addMessage({
+      ...payload,
+      senderName: student?.name ?? "Unknown",
+    });
+    store.addActivity({
+      id: `msg-${payload.id}`,
+      type: "message",
+      studentName: student?.name,
+      description: `Message: ${payload.content.slice(0, 80)}${payload.content.length > 80 ? "..." : ""}`,
+      timestamp: payload.createdAt ?? new Date().toISOString(),
     });
   });
 

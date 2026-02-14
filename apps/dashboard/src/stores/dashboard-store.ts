@@ -74,10 +74,23 @@ export interface DashboardStats {
   overdue: number;
 }
 
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  recipientId?: string | null;
+  groupId?: string | null;
+  content: string;
+  priority: string;
+  channel: string;
+  createdAt: string;
+}
+
 interface DashboardState {
   students: StudentOnMap[];
   escalations: Escalation[];
   activities: ActivityItem[];
+  messages: ChatMessage[];
   operationMode: OperationMode;
   stats: DashboardStats;
   isConnected: boolean;
@@ -92,6 +105,8 @@ interface DashboardState {
   resolveEscalation: (id: string) => void;
   addActivity: (activity: ActivityItem) => void;
   setActivities: (activities: ActivityItem[]) => void;
+  setMessages: (messages: ChatMessage[]) => void;
+  addMessage: (message: ChatMessage) => void;
   setOperationMode: (mode: OperationMode) => void;
   setStats: (stats: DashboardStats) => void;
   setConnected: (connected: boolean) => void;
@@ -104,6 +119,7 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   students: [],
   escalations: [],
   activities: [],
+  messages: [],
   operationMode: "normal",
   stats: { total: 0, safe: 0, moving: 0, assistance: 0, urgent: 0, overdue: 0 },
   isConnected: false,
@@ -147,6 +163,13 @@ export const useDashboardStore = create<DashboardState>((set) => ({
     })),
 
   setActivities: (activities) => set({ activities }),
+
+  setMessages: (messages) => set({ messages }),
+
+  addMessage: (message) =>
+    set((state) => ({
+      messages: [message, ...state.messages].slice(0, 200),
+    })),
 
   setOperationMode: (operationMode) => set({ operationMode }),
 

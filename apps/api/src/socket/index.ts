@@ -12,6 +12,7 @@ import {
   studentLocations,
   escalationEvents,
   checkins,
+  messages,
 } from "../db/schema.js";
 
 // Extend socket data type
@@ -183,8 +184,33 @@ async function syncCoordinatorState(socket: import("socket.io").Socket) {
 
   socket.emit("activities:sync", activities);
 
+  // 5. Fetch recent messages and group into conversations
+  const recentMessages = await db
+    .select()
+    .from(messages)
+    .orderBy(desc(messages.createdAt))
+    .limit(100);
+
+  // Attach sender names from student records
+  const messagesForClient = recentMessages.map((msg) => {
+    const student = allStudents.find((s) => s.id === msg.senderId);
+    return {
+      id: msg.id,
+      senderId: msg.senderId,
+      senderName: student?.fullName ?? "Unknown",
+      recipientId: msg.recipientId,
+      groupId: msg.groupId,
+      content: msg.content,
+      priority: msg.priority,
+      channel: msg.channel,
+      createdAt: msg.createdAt.toISOString(),
+    };
+  });
+
+  socket.emit("messages:sync", messagesForClient);
+
   logger.info(
-    { socketId: socket.id, students: studentData.length, escalations: escalationsForClient.length },
+    { socketId: socket.id, students: studentData.length, escalations: escalationsForClient.length, messages: messagesForClient.length },
     "Coordinator state synced",
   );
 }

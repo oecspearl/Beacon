@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Search,
   Send,
@@ -8,7 +8,13 @@ import {
 } from "lucide-react";
 import BroadcastModal from "@/components/BroadcastModal";
 import StatusBadge from "@/components/StatusBadge";
-import type { StudentStatus } from "@/stores/dashboard-store";
+import { useDashboardStore } from "@/stores/dashboard-store";
+import type { StudentStatus, ChatMessage } from "@/stores/dashboard-store";
+import { api } from "@/lib/api";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface Conversation {
   id: string;
@@ -19,100 +25,107 @@ interface Conversation {
   unread: number;
 }
 
-interface Message {
-  id: string;
-  text: string;
-  sender: "coordinator" | "student";
-  timestamp: string;
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function timeAgo(dateString: string): string {
+  const diff = Date.now() - new Date(dateString).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
 }
 
-const SAMPLE_CONVERSATIONS: Conversation[] = [
-  {
-    id: "c1",
-    name: "Marcus Williams",
-    status: "urgent",
-    lastMessage: "Please help, my battery is dying",
-    lastMessageTime: "5m ago",
-    unread: 2,
-  },
-  {
-    id: "c2",
-    name: "Andre Charles",
-    status: "assistance",
-    lastMessage: "I need directions to the embassy",
-    lastMessageTime: "12m ago",
-    unread: 1,
-  },
-  {
-    id: "c3",
-    name: "Amara Joseph",
-    status: "safe",
-    lastMessage: "Arrived at accommodation safely",
-    lastMessageTime: "55m ago",
-    unread: 0,
-  },
-  {
-    id: "c4",
-    name: "Ryan Thomas",
-    status: "overdue",
-    lastMessage: "Will check in shortly",
-    lastMessageTime: "2h ago",
-    unread: 0,
-  },
-  {
-    id: "c5",
-    name: "Keisha Brown",
-    status: "safe",
-    lastMessage: "Thank you for the update",
-    lastMessageTime: "3h ago",
-    unread: 0,
-  },
-  {
-    id: "c6",
-    name: "Devon Clarke",
-    status: "moving",
-    lastMessage: "On my way to the hotel now",
-    lastMessageTime: "4h ago",
-    unread: 0,
-  },
-];
-
-const SAMPLE_MESSAGES: Record<string, Message[]> = {
-  c1: [
-    { id: "m1", text: "Marcus, we've noticed your battery is critically low. Can you confirm your location?", sender: "coordinator", timestamp: "10m ago" },
-    { id: "m2", text: "I'm near the harbour in Roseau. Battery at 5%.", sender: "student", timestamp: "8m ago" },
-    { id: "m3", text: "Please help, my battery is dying", sender: "student", timestamp: "5m ago" },
-  ],
-  c2: [
-    { id: "m4", text: "Hi Andre, how can we help?", sender: "coordinator", timestamp: "20m ago" },
-    { id: "m5", text: "I need directions to the embassy", sender: "student", timestamp: "12m ago" },
-  ],
-  c3: [
-    { id: "m6", text: "Please confirm your current location.", sender: "coordinator", timestamp: "1h ago" },
-    { id: "m7", text: "I'm at the accommodation in Roseau. Everything is fine.", sender: "student", timestamp: "55m ago" },
-    { id: "m8", text: "Arrived at accommodation safely", sender: "student", timestamp: "55m ago" },
-    { id: "m9", text: "Thank you. Stay safe and check in at the scheduled time.", sender: "coordinator", timestamp: "50m ago" },
-  ],
-};
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
 
 export default function MessagesPage() {
-  const [selectedConvo, setSelectedConvo] = useState<string | null>("c1");
+  const [selectedConvo, setSelectedConvo] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [newMessage, setNewMessage] = useState("");
+  const [sending, setSending] = useState(false);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
 
-  const filteredConversations = SAMPLE_CONVERSATIONS.filter((c) =>
+  const storeMessages = useDashboardStore((s) => s.messages);
+  const students = useDashboardStore((s) => s.students);
+
+  // Group messages by senderId into conversations
+  const conversations = useMemo<Conversation[]>(() => {
+    const convoMap = new Map<string, { msgs: ChatMessage[]; name: string }>();
+
+    for (const msg of storeMessages) {
+      const key = msg.senderId;
+      if (!convoMap.has(key)) {
+        convoMap.set(key, { msgs: [], name: msg.senderName ?? "Unknown" });
+      }
+      convoMap.get(key)!.msgs.push(msg);
+    }
+
+    // Sort messages within each conversation by time
+    const result: Conversation[] = [];
+    for (const [senderId, { msgs, name }] of convoMap) {
+      const sorted = [...msgs].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      const latest = sorted[0];
+      if (!latest) continue;
+      const student = students.find((s) => s.id === senderId);
+
+      result.push({
+        id: senderId,
+        name: student?.name ?? name,
+        status: (student?.status ?? "safe") as StudentStatus,
+        lastMessage: latest.content,
+        lastMessageTime: timeAgo(latest.createdAt),
+        unread: 0,
+      });
+    }
+
+    // Sort conversations by most recent message
+    result.sort((a, b) => {
+      const aMsg = storeMessages.find((m) => m.senderId === a.id);
+      const bMsg = storeMessages.find((m) => m.senderId === b.id);
+      return new Date(bMsg?.createdAt ?? 0).getTime() - new Date(aMsg?.createdAt ?? 0).getTime();
+    });
+
+    return result;
+  }, [storeMessages, students]);
+
+  // Get messages for selected conversation
+  const currentMessages = useMemo(() => {
+    if (!selectedConvo) return [];
+    return storeMessages
+      .filter((m) => m.senderId === selectedConvo || m.recipientId === selectedConvo)
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }, [storeMessages, selectedConvo]);
+
+  const filteredConversations = conversations.filter((c) =>
     c.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const currentConvo = SAMPLE_CONVERSATIONS.find((c) => c.id === selectedConvo);
-  const messages = selectedConvo ? SAMPLE_MESSAGES[selectedConvo] ?? [] : [];
+  const currentConvo = conversations.find((c) => c.id === selectedConvo);
 
-  function handleSendMessage() {
-    if (!newMessage.trim()) return;
-    // In production this would emit via socket or call API
-    console.log("Send message:", newMessage, "to:", selectedConvo);
-    setNewMessage("");
+  async function handleSendMessage() {
+    if (!newMessage.trim() || !selectedConvo) return;
+    setSending(true);
+    try {
+      await api.post("/messages", {
+        senderId: "coordinator",
+        recipientId: selectedConvo,
+        content: newMessage.trim(),
+        priority: "informational",
+        channel: "data",
+      });
+      setNewMessage("");
+    } catch (err) {
+      console.error("Failed to send message:", err);
+    } finally {
+      setSending(false);
+    }
   }
 
   function handleBroadcast(payload: {
@@ -123,6 +136,14 @@ export default function MessagesPage() {
   }) {
     console.log("Broadcast:", payload);
   }
+
+  // Select first conversation by default
+  const firstConvo = filteredConversations[0];
+  if (!selectedConvo && firstConvo) {
+    setSelectedConvo(firstConvo.id);
+  }
+
+  const hasMessages = storeMessages.length > 0;
 
   return (
     <div className="flex h-full">
@@ -154,6 +175,11 @@ export default function MessagesPage() {
 
         {/* List */}
         <div className="flex-1 overflow-auto">
+          {!hasMessages && (
+            <div className="px-4 py-8 text-center text-sm text-slate-500">
+              No messages yet. Messages from students will appear here.
+            </div>
+          )}
           {filteredConversations.map((convo) => (
             <button
               key={convo.id}
@@ -170,7 +196,8 @@ export default function MessagesPage() {
                   .split(" ")
                   .map((n) => n[0])
                   .join("")
-                  .toUpperCase()}
+                  .toUpperCase()
+                  .slice(0, 2)}
               </div>
 
               <div className="min-w-0 flex-1">
@@ -212,7 +239,8 @@ export default function MessagesPage() {
                     .split(" ")
                     .map((n) => n[0])
                     .join("")
-                    .toUpperCase()}
+                    .toUpperCase()
+                    .slice(0, 2)}
                 </div>
                 <div>
                   <h3 className="font-medium text-slate-100">
@@ -229,35 +257,46 @@ export default function MessagesPage() {
 
             {/* Messages */}
             <div className="flex-1 space-y-4 overflow-auto p-6">
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex ${
-                    msg.sender === "coordinator"
-                      ? "justify-end"
-                      : "justify-start"
-                  }`}
-                >
+              {currentMessages.length === 0 && (
+                <div className="py-12 text-center text-sm text-slate-500">
+                  No messages in this conversation yet.
+                </div>
+              )}
+              {currentMessages.map((msg) => {
+                const isCoordinator = msg.senderId !== selectedConvo;
+                return (
                   <div
-                    className={`max-w-md rounded-lg px-4 py-2.5 ${
-                      msg.sender === "coordinator"
-                        ? "bg-beacon-600 text-white"
-                        : "bg-slate-700 text-slate-200"
+                    key={msg.id}
+                    className={`flex ${
+                      isCoordinator ? "justify-end" : "justify-start"
                     }`}
                   >
-                    <p className="text-sm">{msg.text}</p>
-                    <p
-                      className={`mt-1 text-xs ${
-                        msg.sender === "coordinator"
-                          ? "text-beacon-200"
-                          : "text-slate-400"
+                    <div
+                      className={`max-w-md rounded-lg px-4 py-2.5 ${
+                        isCoordinator
+                          ? "bg-beacon-600 text-white"
+                          : "bg-slate-700 text-slate-200"
                       }`}
                     >
-                      {msg.timestamp}
-                    </p>
+                      {!isCoordinator && (
+                        <p className="mb-1 text-xs font-semibold text-slate-400">
+                          {msg.senderName}
+                        </p>
+                      )}
+                      <p className="text-sm">{msg.content}</p>
+                      <p
+                        className={`mt-1 text-xs ${
+                          isCoordinator
+                            ? "text-beacon-200"
+                            : "text-slate-400"
+                        }`}
+                      >
+                        {timeAgo(msg.createdAt)}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Compose */}
@@ -273,10 +312,11 @@ export default function MessagesPage() {
                   onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
                   placeholder="Type a message..."
                   className="beacon-input flex-1"
+                  disabled={sending}
                 />
                 <button
                   onClick={handleSendMessage}
-                  disabled={!newMessage.trim()}
+                  disabled={!newMessage.trim() || sending}
                   className="beacon-btn-primary"
                 >
                   <Send className="h-4 w-4" />
@@ -289,7 +329,9 @@ export default function MessagesPage() {
             <div className="text-center">
               <MessageSquareIcon className="mx-auto mb-3 h-12 w-12 text-slate-600" />
               <p className="text-sm text-slate-500">
-                Select a conversation to start messaging
+                {hasMessages
+                  ? "Select a conversation to view messages"
+                  : "No messages yet. Messages from students will appear here."}
               </p>
             </div>
           </div>

@@ -60,6 +60,13 @@ router.post("/", validate(sendMessageSchema), async (req, res) => {
       })
       .returning();
 
+    // Broadcast to coordinators via Socket.IO
+    try {
+      emitToCoordinators("message:new", message);
+    } catch {
+      logger.debug("Socket.IO not available for message broadcast");
+    }
+
     logger.info(
       { messageId: message.id, senderId, recipientId, groupId },
       "Message sent",
