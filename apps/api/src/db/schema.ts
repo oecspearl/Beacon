@@ -126,9 +126,9 @@ export const studentStatusesRelations = relations(studentStatuses, ({ one }) => 
 
 export const messages = pgTable("messages", {
   id: uuid("id").primaryKey().defaultRandom(),
-  senderId: uuid("sender_id").notNull(),
-  recipientId: uuid("recipient_id"),
-  groupId: uuid("group_id"),
+  senderId: varchar("sender_id", { length: 255 }).notNull(),
+  recipientId: varchar("recipient_id", { length: 255 }),
+  groupId: varchar("group_id", { length: 255 }),
   content: text("content").notNull(),
   priority: varchar("priority", { length: 30 }).notNull().default("informational"),
   encrypted: boolean("encrypted").notNull().default(false),
@@ -161,8 +161,8 @@ export const panicEvents = pgTable("panic_events", {
   studentId: uuid("student_id")
     .notNull()
     .references(() => students.id, { onDelete: "cascade" }),
-  latitude: doublePrecision("latitude").notNull(),
-  longitude: doublePrecision("longitude").notNull(),
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
   accuracy: doublePrecision("accuracy"),
   batteryLevel: integer("battery_level"),
   timestamp: timestamp("timestamp", { withTimezone: true }).notNull().defaultNow(),

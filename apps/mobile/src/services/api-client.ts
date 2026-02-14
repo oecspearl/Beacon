@@ -18,8 +18,8 @@ export let API_BASE_URL =
     ? `http://${DEV_HOST}:3001/api/v1`
     : `${PROD_HOST}/api/v1`;
 
-/** Request timeout in milliseconds. */
-const REQUEST_TIMEOUT_MS = 10_000;
+/** Request timeout in milliseconds (30s to handle Render free-tier cold starts). */
+const REQUEST_TIMEOUT_MS = 30_000;
 
 // ---------------------------------------------------------------------------
 // Auth token
