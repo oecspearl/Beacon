@@ -16,6 +16,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppStore, type StudentProfile } from "../src/stores/app-store";
 import { postStudentRegistration } from "../src/services/api-client";
+import { getDeviceInfo } from "../src/services/device-info";
 
 // ---------------------------------------------------------------------------
 // Step definitions
@@ -193,6 +194,9 @@ export default function RegistrationScreen() {
     // Save locally first
     setStudentProfile(profile);
 
+    // Collect device info for the coordination dashboard
+    const device = await getDeviceInfo().catch(() => null);
+
     // Send to backend API
     const apiPayload = {
       fullName: `${form.firstName} ${form.lastName}`,
@@ -205,6 +209,15 @@ export default function RegistrationScreen() {
       phone: form.phone || undefined,
       bloodType: form.bloodType || undefined,
       medicalConditions: form.medicalConditions || undefined,
+      deviceInfo: device
+        ? {
+            manufacturer: device.manufacturer ?? undefined,
+            modelName: device.modelName ?? undefined,
+            osName: device.osName,
+            osVersion: device.osVersion,
+            appVersion: device.appVersion,
+          }
+        : undefined,
       emergencyContacts: form.emergencyName
         ? [
             {

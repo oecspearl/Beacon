@@ -2,7 +2,7 @@ import { Router, type Router as RouterType } from "express";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { checkins, students } from "../db/schema.js";
+import { checkins, students, studentLocations, studentStatuses } from "../db/schema.js";
 import { authenticateCoordinator } from "../middleware/auth.js";
 import { validate } from "../middleware/validate.js";
 import { logger } from "../config/logger.js";
@@ -27,6 +27,7 @@ const checkinSchema = z.object({
   response: z.enum(["safe", "moving", "need_assistance", "urgent"]),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
+  batteryLevel: z.number().int().min(0).max(100).optional(),
   channel: z.enum(["data", "mesh", "sms"]).default("data"),
 });
 
@@ -39,7 +40,7 @@ const scheduleSchema = z.object({
 // ---------------------------------------------------------------------------
 router.post("/", validate(checkinSchema), async (req, res) => {
   try {
-    const { studentId, response, latitude, longitude, channel } = req.body;
+    const { studentId, response, latitude, longitude, batteryLevel, channel } = req.body;
 
     const [record] = await db
       .insert(checkins)
@@ -52,15 +53,43 @@ router.post("/", validate(checkinSchema), async (req, res) => {
       })
       .returning();
 
-    // Broadcast to coordinators
+    // Record location if provided
+    if (latitude != null && longitude != null) {
+      await db.insert(studentLocations).values({
+        studentId,
+        latitude,
+        longitude,
+        source: channel,
+      }).catch((err) => logger.debug({ err }, "Failed to record checkin location"));
+    }
+
+    // Record a status snapshot so dashboard gets battery + location
+    if (batteryLevel != null || (latitude != null && longitude != null)) {
+      const RESPONSE_STATUS: Record<string, string> = {
+        safe: "OK",
+        moving: "MV",
+        need_assistance: "NA",
+        urgent: "UR",
+      };
+      await db.insert(studentStatuses).values({
+        studentId,
+        status: RESPONSE_STATUS[response] ?? "OK",
+        latitude: latitude ?? null,
+        longitude: longitude ?? null,
+        batteryLevel: batteryLevel ?? null,
+        channel,
+      }).catch((err) => logger.debug({ err }, "Failed to record checkin status"));
+    }
+
+    // Broadcast to coordinators (include batteryLevel in payload)
     try {
-      emitToCoordinators("student:checkin", record);
+      emitToCoordinators("student:checkin", { ...record, batteryLevel });
     } catch {
       logger.debug("Socket.IO not available for check-in broadcast");
     }
 
     logger.info(
-      { checkinId: record?.id, studentId, response },
+      { checkinId: record?.id, studentId, response, batteryLevel },
       "Check-in recorded",
     );
 

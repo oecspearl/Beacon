@@ -30,6 +30,13 @@ export const students = pgTable("students", {
   bloodType: varchar("blood_type", { length: 10 }),
   medicalConditions: text("medical_conditions"),
   photoUrl: text("photo_url"),
+  deviceInfo: jsonb("device_info").$type<{
+    manufacturer?: string;
+    modelName?: string;
+    osName?: string;
+    osVersion?: string;
+    appVersion?: string;
+  }>(),
   readinessScore: integer("readiness_score").notNull().default(0),
   walkthroughCompleted: boolean("walkthrough_completed").notNull().default(false),
   registeredAt: timestamp("registered_at", { withTimezone: true }).notNull().defaultNow(),

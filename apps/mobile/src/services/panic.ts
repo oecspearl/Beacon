@@ -1,9 +1,10 @@
-import { getCurrentLocation, startBackgroundTracking, stopBackgroundTracking } from "./location";
+import { getCurrentLocation, startBackgroundTracking, stopBackgroundTracking, setTrackingStudentId } from "./location";
 import { sendPanicSMS } from "./sms";
 import { enqueue } from "./queue";
 import { getDatabase } from "./database";
 import { useAppStore } from "../stores/app-store";
 import { startRecording, stopRecording, RECORDING_DURATION_MS, type RecordingHandle } from "./audio";
+import { getBatteryLevel } from "./device-info";
 import type { BeaconLocation } from "./location";
 
 // ---------------------------------------------------------------------------
@@ -53,15 +54,20 @@ export async function activatePanic(studentId: string): Promise<PanicEvent | nul
 
   console.log("[Panic] ACTIVATING PANIC EVENT");
 
-  // 1. Capture GPS
+  // 1. Capture GPS and battery level in parallel
   let location: BeaconLocation | null = null;
+  let batteryLevel: number | null = null;
   try {
-    location = await getCurrentLocation();
+    [location, batteryLevel] = await Promise.all([
+      getCurrentLocation(),
+      getBatteryLevel(),
+    ]);
   } catch {
-    console.error("[Panic] Could not get GPS location");
+    console.error("[Panic] Could not get GPS location or battery");
   }
 
-  // 2. Start background tracking
+  // 2. Start background tracking (sends real-time location to API)
+  setTrackingStudentId(studentId);
   await startBackgroundTracking();
 
   // 3. Persist to database
@@ -82,7 +88,7 @@ export async function activatePanic(studentId: string): Promise<PanicEvent | nul
 
   _activePanicId = result.lastInsertRowId;
 
-  // 4. Queue SOS on data channel
+  // 4. Queue SOS on data channel (includes battery level)
   try {
     await enqueue(
       JSON.stringify({
@@ -91,6 +97,7 @@ export async function activatePanic(studentId: string): Promise<PanicEvent | nul
         location: location
           ? { lat: location.latitude, lon: location.longitude, acc: location.accuracy }
           : null,
+        batteryLevel,
         timestamp: new Date().toISOString(),
       }),
       10, // highest priority
@@ -184,6 +191,7 @@ export async function deactivatePanic(): Promise<void> {
   console.log("[Panic] Deactivating panic event:", _activePanicId);
 
   // Stop background tracking
+  setTrackingStudentId(null);
   await stopBackgroundTracking();
 
   // Stop audio recording if still active

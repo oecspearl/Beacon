@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAppStore, type StatusCode } from "../src/stores/app-store";
 import { postCheckIn } from "../src/services/api-client";
 import { getCurrentLocation } from "../src/services/location";
+import { getBatteryLevel } from "../src/services/device-info";
 
 // ---------------------------------------------------------------------------
 // Status button definitions
@@ -89,6 +90,9 @@ export default function CheckInScreen() {
         console.warn("[CheckIn] Could not get location");
       }
 
+      // Capture battery level
+      const batteryLevel = await getBatteryLevel().catch(() => null);
+
       // Send to backend API
       const studentId = studentProfile?.id ?? "unknown";
       const checkInData = {
@@ -96,6 +100,7 @@ export default function CheckInScreen() {
         response: option.code,
         latitude,
         longitude,
+        batteryLevel: batteryLevel ?? undefined,
         channel: "data" as const,
       };
 

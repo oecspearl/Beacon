@@ -33,6 +33,13 @@ const createStudentSchema = z.object({
   bloodType: z.string().optional(),
   medicalConditions: z.string().optional(),
   photoUrl: z.string().url().optional(),
+  deviceInfo: z.object({
+    manufacturer: z.string().optional(),
+    modelName: z.string().optional(),
+    osName: z.string().optional(),
+    osVersion: z.string().optional(),
+    appVersion: z.string().optional(),
+  }).optional(),
   emergencyContacts: z
     .array(
       z.object({

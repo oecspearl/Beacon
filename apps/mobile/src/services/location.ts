@@ -1,11 +1,20 @@
 import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
+import { postStatusUpdate } from "./api-client";
+import { getBatteryLevel } from "./device-info";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const BACKGROUND_LOCATION_TASK = "beacon-background-location";
+
+/** Student ID set when background tracking starts during panic. */
+let _trackingStudentId: string | null = null;
+
+export function setTrackingStudentId(id: string | null): void {
+  _trackingStudentId = id;
+}
 
 export interface BeaconLocation {
   latitude: number;
@@ -29,15 +38,25 @@ TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
 
   if (data) {
     const { locations } = data as { locations: Location.LocationObject[] };
-    if (locations && locations.length > 0) {
-      // In production this would push to the queue service.
-      // For now we just log -- the panic service hooks into this.
+    if (locations && locations.length > 0 && _trackingStudentId) {
+      const latest = locations[locations.length - 1];
+      const battery = await getBatteryLevel().catch(() => null);
+
+      // Send real-time location update to the coordination API
+      postStatusUpdate({
+        studentId: _trackingStudentId,
+        status: "UR", // Urgent — panic is active
+        latitude: latest.coords.latitude,
+        longitude: latest.coords.longitude,
+        batteryLevel: battery ?? undefined,
+        channel: "data",
+      }).catch((err) =>
+        console.warn("[Location] Background status update failed:", err),
+      );
+
       console.log(
-        "[Location] Background update:",
-        locations.map((l) => ({
-          lat: l.coords.latitude,
-          lon: l.coords.longitude,
-        })),
+        "[Location] Background update sent:",
+        { lat: latest.coords.latitude, lon: latest.coords.longitude, battery },
       );
     }
   }
