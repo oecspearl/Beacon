@@ -33,7 +33,18 @@ export function getIO(): SocketIOServer {
 
 async function syncCoordinatorState(socket: import("socket.io").Socket) {
   // 1. Fetch all students with their latest status and location
-  const allStudents = await db.select().from(students);
+  // Select only the columns we need (avoids breaking if schema is ahead of DB)
+  const allStudents = await db
+    .select({
+      id: students.id,
+      fullName: students.fullName,
+      hostCountry: students.hostCountry,
+      createdAt: students.createdAt,
+      phone: students.phone,
+      hostInstitution: students.hostInstitution,
+      programme: students.programme,
+    })
+    .from(students);
 
   const studentData = await Promise.all(
     allStudents.map(async (student) => {
