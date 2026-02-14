@@ -198,6 +198,7 @@ export default function RegistrationScreen() {
       fullName: `${form.firstName} ${form.lastName}`,
       nationality: form.nationality || "Unknown",
       oecsState: form.nationality || "Unknown",
+      passportNumberEncrypted: "pending",
       programme: form.programme || "OECS Student Programme",
       hostInstitution: form.institution || "Unknown",
       hostCountry: form.hostCountry || "Unknown",
