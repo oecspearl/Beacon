@@ -1,11 +1,24 @@
-import MapLibreGL from "@maplibre/maplibre-react-native";
-
 // ---------------------------------------------------------------------------
 // Offline Map Management Service
 //
 // Manages downloadable map tile packs for offline use. Uses OpenFreeMap
 // free tile sources so no access token is required.
+//
+// MapLibre GL Native is optional — all functions gracefully return when
+// the library is unavailable (e.g. in Expo Go or builds without native maps).
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Dynamic import — MapLibre may not be installed
+// ---------------------------------------------------------------------------
+
+let MapLibreGL: typeof import("@maplibre/maplibre-react-native") | null = null;
+
+try {
+  MapLibreGL = require("@maplibre/maplibre-react-native");
+} catch {
+  console.warn("[Maps] @maplibre/maplibre-react-native not available");
+}
 
 // ---------------------------------------------------------------------------
 // Initialisation
@@ -16,10 +29,9 @@ import MapLibreGL from "@maplibre/maplibre-react-native";
  * We use free tile sources (OpenFreeMap) so no access token is needed.
  */
 export async function initializeMapLibre(): Promise<void> {
-  MapLibreGL.setAccessToken(null);
-
-  // Disable telemetry for privacy
-  MapLibreGL.setTelemetryEnabled(false);
+  if (!MapLibreGL?.default) return;
+  MapLibreGL.default.setAccessToken(null);
+  MapLibreGL.default.setTelemetryEnabled(false);
 }
 
 // ---------------------------------------------------------------------------
@@ -84,11 +96,6 @@ export const ESTIMATED_SIZES_MB: Record<string, number> = {
 
 /**
  * Download an offline map tile pack for a given bounding box.
- *
- * @param name    - Unique name for the pack (e.g. "cuba-offline")
- * @param bounds  - Geographic bounds as [[west, south], [east, north]]
- * @param minZoom - Minimum zoom level to cache (default 1)
- * @param maxZoom - Maximum zoom level to cache (default 14)
  */
 export async function downloadOfflinePack(
   name: string,
@@ -96,9 +103,15 @@ export async function downloadOfflinePack(
   minZoom: number = 1,
   maxZoom: number = 14,
 ): Promise<void> {
+  if (!MapLibreGL?.default) {
+    console.warn("[Maps] Cannot download pack — MapLibre not available");
+    return;
+  }
+
+  const MGL = MapLibreGL.default;
   const styleURL = DEFAULT_STYLE_URL;
 
-  await MapLibreGL.offlineManager.createPack(
+  await MGL.offlineManager.createPack(
     {
       name,
       styleURL,
@@ -106,14 +119,13 @@ export async function downloadOfflinePack(
       minZoom,
       maxZoom,
     },
-    (region, status) => {
-      // Progress callback — used by consumers to track download state
+    (_region: any, status: any) => {
       console.log(
         `[Maps] Pack "${name}" progress:`,
         status.percentage?.toFixed(1) + "%",
       );
     },
-    (region, error) => {
+    (_region: any, error: any) => {
       console.error(`[Maps] Pack "${name}" error:`, error);
     },
   );
@@ -122,18 +134,18 @@ export async function downloadOfflinePack(
 /**
  * Retrieve all previously downloaded offline packs.
  */
-export async function getDownloadedPacks(): Promise<MapLibreGL.OfflinePack[]> {
-  const packs = await MapLibreGL.offlineManager.getPacks();
+export async function getDownloadedPacks(): Promise<any[]> {
+  if (!MapLibreGL?.default) return [];
+  const packs = await MapLibreGL.default.offlineManager.getPacks();
   return packs ?? [];
 }
 
 /**
  * Delete a specific offline pack by name.
- *
- * @param name - The name of the pack to remove
  */
 export async function deleteOfflinePack(name: string): Promise<void> {
-  await MapLibreGL.offlineManager.deletePack(name);
+  if (!MapLibreGL?.default) return;
+  await MapLibreGL.default.offlineManager.deletePack(name);
   console.log(`[Maps] Deleted offline pack: ${name}`);
 }
 
@@ -145,20 +157,24 @@ export function onPackProgress(
   name: string,
   onProgress: (progress: number, completed: boolean) => void,
 ): () => void {
-  const subscription = MapLibreGL.offlineManager.subscribe(
+  if (!MapLibreGL?.default) return () => {};
+
+  const MGL = MapLibreGL.default;
+
+  MGL.offlineManager.subscribe(
     name,
-    (_region, status) => {
+    (_region: any, status: any) => {
       const pct = status.percentage ?? 0;
-      const done = status.state === MapLibreGL.OfflinePackDownloadState.Complete;
+      const done = status.state === MGL.OfflinePackDownloadState?.Complete;
       onProgress(pct, done);
     },
-    (_region, error) => {
+    (_region: any, error: any) => {
       console.error(`[Maps] Progress subscription error for "${name}":`, error);
     },
   );
 
   return () => {
-    MapLibreGL.offlineManager.unsubscribe(name);
+    MGL.offlineManager.unsubscribe(name);
   };
 }
 

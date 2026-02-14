@@ -3,8 +3,7 @@ import { sendPanicSMS } from "./sms";
 import { enqueue } from "./queue";
 import { getDatabase } from "./database";
 import { useAppStore } from "../stores/app-store";
-import { startRecording, stopRecording, RECORDING_DURATION_MS } from "./audio";
-import type { Audio } from "expo-av";
+import { startRecording, stopRecording, RECORDING_DURATION_MS, type RecordingHandle } from "./audio";
 import type { BeaconLocation } from "./location";
 
 // ---------------------------------------------------------------------------
@@ -30,7 +29,7 @@ export interface PanicEvent {
 
 let _activePanicId: number | null = null;
 let _audioRecordingUri: string | null = null;
-let _activeRecording: Audio.Recording | null = null;
+let _activeRecording: RecordingHandle | null = null;
 let _recordingTimer: ReturnType<typeof setTimeout> | null = null;
 
 // ---------------------------------------------------------------------------

@@ -1,68 +1,31 @@
-import { Audio } from "expo-av";
-
 // ---------------------------------------------------------------------------
-// Constants
+// Audio Recording Service (stub)
+//
+// expo-av is excluded from the current build to avoid native CMake errors.
+// This stub provides the same API surface so the rest of the app compiles.
+// Audio recording will be a no-op until expo-av is re-added.
 // ---------------------------------------------------------------------------
 
 /** Default recording duration in milliseconds (60 seconds). */
 export const RECORDING_DURATION_MS = 60_000;
 
-// ---------------------------------------------------------------------------
-// Recording lifecycle
-// ---------------------------------------------------------------------------
+/** Opaque recording handle (stub). */
+export type RecordingHandle = { _stub: true };
 
 /**
- * Start an audio recording session.
- *
- * Requests microphone permission, configures a high-quality AAC recording,
- * and begins capturing audio. Returns the Recording handle so the caller
- * can stop it later.
+ * Start an audio recording session (stub — no-op).
  */
-export async function startRecording(): Promise<Audio.Recording> {
-  // Request microphone permission
-  const { status } = await Audio.requestPermissionsAsync();
-  if (status !== "granted") {
-    throw new Error("[Audio] Microphone permission not granted");
-  }
-
-  // Configure audio mode for recording
-  await Audio.setAudioModeAsync({
-    allowsRecordingIOS: true,
-    playsInSilentModeIOS: true,
-  });
-
-  const recording = new Audio.Recording();
-  await recording.prepareToRecordAsync(
-    Audio.RecordingOptionsPresets.HIGH_QUALITY,
-  );
-  await recording.startAsync();
-
-  console.log("[Audio] Recording started");
-  return recording;
+export async function startRecording(): Promise<RecordingHandle> {
+  console.warn("[Audio] Recording not available — expo-av is not installed");
+  return { _stub: true };
 }
 
 /**
- * Stop an in-progress recording and return the local file URI.
- *
- * @param recording - The Recording handle returned by `startRecording()`.
- * @returns The local URI of the recorded audio file, or null if unavailable.
+ * Stop an in-progress recording (stub — no-op).
  */
 export async function stopRecording(
-  recording: Audio.Recording,
+  _recording: RecordingHandle,
 ): Promise<string | null> {
-  try {
-    await recording.stopAndUnloadAsync();
-
-    // Reset audio mode so playback works normally again
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: false,
-    });
-
-    const uri = recording.getURI();
-    console.log("[Audio] Recording stopped, URI:", uri);
-    return uri ?? null;
-  } catch (err) {
-    console.error("[Audio] Error stopping recording:", err);
-    return null;
-  }
+  console.warn("[Audio] Stop recording not available — expo-av is not installed");
+  return null;
 }

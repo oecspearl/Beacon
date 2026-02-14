@@ -24,7 +24,7 @@ const createStudentSchema = z.object({
   fullName: z.string().min(1),
   nationality: z.string().min(1),
   oecsState: z.string().min(1),
-  passportNumberEncrypted: z.string().min(1),
+  passportNumberEncrypted: z.string().optional(),
   programme: z.string().min(1),
   hostInstitution: z.string().min(1),
   hostCountry: z.string().min(1),
@@ -43,7 +43,7 @@ const createStudentSchema = z.object({
         isInCountry: z.boolean().default(false),
       }),
     )
-    .min(2)
+    .min(1)
     .optional(),
 });
 

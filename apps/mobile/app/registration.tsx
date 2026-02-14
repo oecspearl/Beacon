@@ -9,11 +9,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppStore, type StudentProfile } from "../src/stores/app-store";
+import { postStudentRegistration } from "../src/services/api-client";
 
 // ---------------------------------------------------------------------------
 // Step definitions
@@ -144,7 +146,9 @@ export default function RegistrationScreen() {
     }
   };
 
-  const handleSubmit = () => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
     if (!form.firstName || !form.lastName || !form.email) {
       Alert.alert(
         "Incomplete",
@@ -152,6 +156,8 @@ export default function RegistrationScreen() {
       );
       return;
     }
+
+    setSubmitting(true);
 
     const profile: StudentProfile = {
       id: `STU-${Date.now().toString(36).toUpperCase()}`,
@@ -184,11 +190,56 @@ export default function RegistrationScreen() {
       registeredAt: new Date().toISOString(),
     };
 
+    // Save locally first
     setStudentProfile(profile);
 
-    Alert.alert("Registration Complete", "Your profile has been saved securely on this device.", [
-      { text: "Continue", onPress: () => router.back() },
-    ]);
+    // Send to backend API
+    const apiPayload = {
+      fullName: `${form.firstName} ${form.lastName}`,
+      nationality: form.nationality || "Unknown",
+      oecsState: form.nationality || "Unknown",
+      programme: form.programme || "OECS Student Programme",
+      hostInstitution: form.institution || "Unknown",
+      hostCountry: form.hostCountry || "Unknown",
+      phone: form.phone || undefined,
+      bloodType: form.bloodType || undefined,
+      medicalConditions: form.medicalConditions || undefined,
+      emergencyContacts: form.emergencyName
+        ? [
+            {
+              name: form.emergencyName,
+              relationship: form.emergencyRelation || "Contact",
+              phone: form.emergencyPhone,
+              email: form.emergencyEmail || undefined,
+              isInCountry: false,
+            },
+          ]
+        : undefined,
+    };
+
+    try {
+      const result = await postStudentRegistration(apiPayload);
+      setSubmitting(false);
+
+      if (result) {
+        Alert.alert("Registration Complete", "Your profile has been registered successfully.", [
+          { text: "Continue", onPress: () => router.back() },
+        ]);
+      } else {
+        Alert.alert(
+          "Saved Locally",
+          "Your profile has been saved on this device but could not be sent to the server. It will sync when connectivity is restored.",
+          [{ text: "Continue", onPress: () => router.back() }],
+        );
+      }
+    } catch {
+      setSubmitting(false);
+      Alert.alert(
+        "Saved Locally",
+        "Your profile has been saved on this device but could not be sent to the server.",
+        [{ text: "Continue", onPress: () => router.back() }],
+      );
+    }
   };
 
   // Step content renderers
@@ -452,22 +503,29 @@ export default function RegistrationScreen() {
             </TouchableOpacity>
           )}
           <TouchableOpacity
-            style={[styles.primaryButton, currentStep === 0 && { flex: 1 }]}
+            style={[styles.primaryButton, currentStep === 0 && { flex: 1 }, submitting && { opacity: 0.6 }]}
             onPress={handleNext}
             activeOpacity={0.7}
+            disabled={submitting}
           >
-            <Text style={styles.primaryButtonText}>
-              {currentStep === STEPS.length - 1 ? "Complete" : "Next"}
-            </Text>
-            <Ionicons
-              name={
-                currentStep === STEPS.length - 1
-                  ? "checkmark"
-                  : "arrow-forward"
-              }
-              size={18}
-              color="#fff"
-            />
+            {submitting ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <>
+                <Text style={styles.primaryButtonText}>
+                  {currentStep === STEPS.length - 1 ? "Complete" : "Next"}
+                </Text>
+                <Ionicons
+                  name={
+                    currentStep === STEPS.length - 1
+                      ? "checkmark"
+                      : "arrow-forward"
+                  }
+                  size={18}
+                  color="#fff"
+                />
+              </>
+            )}
           </TouchableOpacity>
         </View>
       </View>

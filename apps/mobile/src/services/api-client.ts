@@ -6,8 +6,17 @@
 // Configuration
 // ---------------------------------------------------------------------------
 
-/** Base URL for the coordination API. Override for staging / production. */
-export let API_BASE_URL = "http://localhost:3001/api/v1";
+/**
+ * Base URL for the coordination API.
+ * Uses the Mac's LAN IP in dev so the phone (on the same Wi-Fi) can reach it.
+ * Override with setBaseUrl() for staging / production.
+ */
+const DEV_HOST = "192.168.100.131";
+const PROD_HOST = "https://beacon-o22n.onrender.com";
+export let API_BASE_URL =
+  typeof __DEV__ !== "undefined" && __DEV__
+    ? `http://${DEV_HOST}:3001/api/v1`
+    : `${PROD_HOST}/api/v1`;
 
 /** Request timeout in milliseconds. */
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -121,4 +130,11 @@ export async function postCheckIn(data: unknown): Promise<unknown | null> {
  */
 export async function postMessage(data: unknown): Promise<unknown | null> {
   return post("/messages", data);
+}
+
+/**
+ * POST student registration to the coordination API.
+ */
+export async function postStudentRegistration(data: unknown): Promise<unknown | null> {
+  return post("/students", data);
 }
