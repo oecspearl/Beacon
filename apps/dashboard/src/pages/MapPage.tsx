@@ -62,6 +62,8 @@ export default function MapPage() {
 
   const filtered = useMemo(() => {
     return students.filter((s) => {
+      // Skip students with no valid location data (default 0,0 is Gulf of Guinea)
+      if (s.lat === 0 && s.lon === 0) return false;
       if (countryFilter !== "All Countries" && s.country !== countryFilter) return false;
       if (statusFilter !== "all" && s.status !== statusFilter) return false;
       return true;

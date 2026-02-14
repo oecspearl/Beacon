@@ -34,6 +34,17 @@
     width: 100%;
     background: #1e293b;
   }
+
+  /* Fix Tailwind Preflight breaking Leaflet tile rendering */
+  .leaflet-container img {
+    max-width: none !important;
+    max-height: none !important;
+  }
+
+  .leaflet-container .leaflet-control-zoom a,
+  .leaflet-container .leaflet-control-attribution {
+    color: inherit;
+  }
 }
 
 @layer components {
