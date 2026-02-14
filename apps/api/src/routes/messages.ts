@@ -16,9 +16,9 @@ const router = Router();
 // ---------------------------------------------------------------------------
 
 const sendMessageSchema = z.object({
-  senderId: z.string().uuid(),
-  recipientId: z.string().uuid().optional(),
-  groupId: z.string().uuid().optional(),
+  senderId: z.string().min(1),
+  recipientId: z.string().min(1).optional(),
+  groupId: z.string().min(1).optional(),
   content: z.string().min(1),
   priority: z.enum(["informational", "action_required", "urgent"]).default("informational"),
   encrypted: z.boolean().default(false),

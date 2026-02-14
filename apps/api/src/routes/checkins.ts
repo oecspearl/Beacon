@@ -23,7 +23,7 @@ const router: RouterType = Router();
 // ---------------------------------------------------------------------------
 
 const checkinSchema = z.object({
-  studentId: z.string().uuid(),
+  studentId: z.string().min(1),
   response: z.enum(["safe", "moving", "need_assistance", "urgent"]),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),

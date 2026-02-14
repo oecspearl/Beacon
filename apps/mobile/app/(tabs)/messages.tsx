@@ -6,9 +6,16 @@ import {
   FlatList,
   TouchableOpacity,
   TextInput,
+  Modal,
+  Alert,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useAppStore } from "../../src/stores/app-store";
+import { postMessage } from "../../src/services/api-client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -128,12 +135,56 @@ function ConversationRow({ item }: { item: Conversation }) {
 export default function MessagesScreen() {
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
+  const [composeVisible, setComposeVisible] = useState(false);
+  const [composeText, setComposeText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sentMessages, setSentMessages] = useState<Array<{ content: string; timestamp: string }>>([]);
+  const studentProfile = useAppStore((s) => s.studentProfile);
 
   const filteredConversations = SAMPLE_CONVERSATIONS.filter(
     (c) =>
       c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.lastMessage.toLowerCase().includes(searchQuery.toLowerCase()),
   );
+
+  // Update the coordination centre conversation with the latest sent message
+  const displayConversations = filteredConversations.map((c) => {
+    if (c.id === "coord-1" && sentMessages.length > 0) {
+      const latest = sentMessages[sentMessages.length - 1];
+      return { ...c, lastMessage: `You: ${latest.content}`, timestamp: latest.timestamp, unread: 0 };
+    }
+    return c;
+  });
+
+  const handleSendMessage = async () => {
+    if (!composeText.trim()) return;
+
+    setSending(true);
+    const studentId = studentProfile?.id ?? "unknown";
+    const messageData = {
+      senderId: studentId,
+      content: composeText.trim(),
+      priority: "informational" as const,
+      channel: "data" as const,
+    };
+
+    try {
+      const result = await postMessage(messageData);
+      setSending(false);
+
+      if (result) {
+        setSentMessages((prev) => [...prev, { content: composeText.trim(), timestamp: "Just now" }]);
+        setComposeText("");
+        setComposeVisible(false);
+        Alert.alert("Sent", "Your message has been sent to the Coordination Centre.");
+      } else {
+        Alert.alert("Failed", "Could not send message. Please check your connection and try again.");
+      }
+    } catch {
+      setSending(false);
+      Alert.alert("Error", "Failed to send message. Please try again.");
+    }
+  };
 
   const renderItem = useCallback(
     ({ item }: { item: Conversation }) => <ConversationRow item={item} />,
@@ -147,7 +198,7 @@ export default function MessagesScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Messages</Text>
-        <TouchableOpacity style={styles.composeButton}>
+        <TouchableOpacity style={styles.composeButton} onPress={() => setComposeVisible(true)}>
           <Ionicons name="create-outline" size={22} color="#3b82f6" />
         </TouchableOpacity>
       </View>
@@ -180,7 +231,7 @@ export default function MessagesScreen() {
 
       {/* Conversation list */}
       <FlatList
-        data={filteredConversations}
+        data={displayConversations}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContent}
@@ -193,6 +244,42 @@ export default function MessagesScreen() {
           </View>
         }
       />
+
+      {/* Compose Modal */}
+      <Modal visible={composeVisible} animationType="slide" transparent>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <View style={[styles.composeModal, { paddingBottom: insets.bottom + 16 }]}>
+            <View style={styles.composeHeader}>
+              <TouchableOpacity onPress={() => { setComposeVisible(false); setComposeText(""); }}>
+                <Text style={styles.composeCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.composeTitle}>Message Coordination Centre</Text>
+              <TouchableOpacity onPress={handleSendMessage} disabled={sending || !composeText.trim()}>
+                {sending ? (
+                  <ActivityIndicator color="#3b82f6" size="small" />
+                ) : (
+                  <Text style={[styles.composeSendText, !composeText.trim() && { opacity: 0.4 }]}>
+                    Send
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+            <TextInput
+              style={styles.composeInput}
+              placeholder="Type your message to the Coordination Centre..."
+              placeholderTextColor="#64748b"
+              value={composeText}
+              onChangeText={setComposeText}
+              multiline
+              autoFocus
+              textAlignVertical="top"
+            />
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -335,5 +422,47 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 15,
     color: "#64748b",
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  composeModal: {
+    backgroundColor: "#1a1a2e",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 16,
+    paddingHorizontal: 20,
+    minHeight: 300,
+  },
+  composeHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  composeTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#e2e8f0",
+  },
+  composeCancelText: {
+    fontSize: 15,
+    color: "#94a3b8",
+  },
+  composeSendText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#3b82f6",
+  },
+  composeInput: {
+    flex: 1,
+    fontSize: 16,
+    color: "#e2e8f0",
+    backgroundColor: "#16213e",
+    borderRadius: 12,
+    padding: 16,
+    minHeight: 150,
   },
 });

@@ -5,6 +5,8 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Alert,
+  Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -239,31 +241,60 @@ export default function ProfileScreen() {
             <SettingsLink
               icon="notifications-outline"
               label="Notifications"
-              onPress={() => {}}
+              onPress={() => {
+                Alert.alert(
+                  "Notifications",
+                  "Push notifications for emergency alerts, check-in reminders, and coordination messages are enabled by default.\n\nTo manage notification permissions, go to your device Settings.",
+                  [
+                    { text: "Open Settings", onPress: () => Linking.openSettings() },
+                    { text: "OK" },
+                  ],
+                );
+              }}
             />
             <View style={styles.divider} />
             <SettingsLink
               icon="lock-closed-outline"
               label="Security & Privacy"
-              onPress={() => {}}
+              onPress={() => {
+                Alert.alert(
+                  "Security & Privacy",
+                  "Your data is stored securely on this device and only shared with the OECS Coordination Centre during emergencies.\n\n\u2022 Location data is only transmitted during panic events or check-ins\n\u2022 Audio recordings are stored locally and shared with coordinators\n\u2022 Messages are encrypted in transit\n\u2022 Medical information is only accessed during emergencies",
+                );
+              }}
             />
             <View style={styles.divider} />
             <SettingsLink
               icon="language-outline"
               label="Language"
-              onPress={() => {}}
+              onPress={() => {
+                Alert.alert(
+                  "Language",
+                  "Beacon currently supports English. Additional languages (Spanish, French, Dutch) will be available in future updates for all OECS member states.",
+                );
+              }}
             />
             <View style={styles.divider} />
             <SettingsLink
               icon="help-circle-outline"
               label="Help & Support"
-              onPress={() => {}}
+              onPress={() => {
+                Alert.alert(
+                  "Help & Support",
+                  "For emergency assistance, use the SOS button on the home screen.\n\nFor technical support or feedback:\n\u2022 Email: support@oecs-beacon.org\n\u2022 Phone: +1-758-455-6327\n\nIf you are in immediate danger, always call local emergency services first.",
+                );
+              }}
             />
             <View style={styles.divider} />
             <SettingsLink
               icon="information-circle-outline"
               label="About Beacon"
-              onPress={() => {}}
+              onPress={() => {
+                Alert.alert(
+                  "About Beacon",
+                  "Beacon v0.1.0\n\nOECS Student Emergency Response System\n\nBeacon helps OECS students studying abroad stay safe during emergencies. Features include SOS alerts, real-time location sharing, multi-channel communication (Data, SMS, Mesh), and coordination with emergency response teams.\n\nDeveloped for the Organisation of Eastern Caribbean States (OECS).",
+                );
+              }}
             />
           </View>
         </View>

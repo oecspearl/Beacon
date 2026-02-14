@@ -17,13 +17,21 @@ const router = Router();
 // ---------------------------------------------------------------------------
 
 const panicAlertSchema = z.object({
-  studentId: z.string().uuid(),
-  latitude: z.number().min(-90).max(90),
-  longitude: z.number().min(-180).max(180),
+  studentId: z.string().min(1),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
   accuracy: z.number().optional(),
   batteryLevel: z.number().int().min(0).max(100).optional(),
   audioUrl: z.string().url().optional(),
   transmittedVia: z.array(z.enum(["data", "mesh", "sms"])).default(["data"]),
+  // Accept mobile app payload format aliases
+  type: z.string().optional(),
+  location: z.object({
+    lat: z.number().optional(),
+    lon: z.number().optional(),
+    acc: z.number().optional(),
+  }).nullable().optional(),
+  timestamp: z.string().optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -33,13 +41,17 @@ router.post("/", validate(panicAlertSchema), async (req, res) => {
   try {
     const {
       studentId,
-      latitude,
-      longitude,
       accuracy,
       batteryLevel,
       audioUrl,
       transmittedVia,
+      location,
     } = req.body;
+
+    // Support both flat (latitude/longitude) and nested (location.lat/lon) formats
+    const latitude = req.body.latitude ?? location?.lat ?? null;
+    const longitude = req.body.longitude ?? location?.lon ?? null;
+    const acc = accuracy ?? location?.acc ?? null;
 
     const [event] = await db
       .insert(panicEvents)
@@ -47,7 +59,7 @@ router.post("/", validate(panicAlertSchema), async (req, res) => {
         studentId,
         latitude,
         longitude,
-        accuracy: accuracy ?? null,
+        accuracy: acc,
         batteryLevel: batteryLevel ?? null,
         audioUrl: audioUrl ?? null,
         transmittedVia,
@@ -59,7 +71,7 @@ router.post("/", validate(panicAlertSchema), async (req, res) => {
       studentId,
       "panic_activated",
       "critical",
-      `Panic button activated at ${latitude}, ${longitude}`,
+      `Panic button activated at ${latitude ?? "unknown"}, ${longitude ?? "unknown"}`,
     );
 
     // Broadcast to all coordinators

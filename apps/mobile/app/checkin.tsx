@@ -10,6 +10,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppStore, type StatusCode } from "../src/stores/app-store";
+import { postCheckIn } from "../src/services/api-client";
+import { getCurrentLocation } from "../src/services/location";
 
 // ---------------------------------------------------------------------------
 // Status button definitions
@@ -65,20 +67,53 @@ export default function CheckInScreen() {
   const currentStatus = useAppStore((s) => s.currentStatus);
   const [submitting, setSubmitting] = useState(false);
 
+  const studentProfile = useAppStore((s) => s.studentProfile);
+
   const handleCheckIn = async (option: StatusOption) => {
     setSubmitting(true);
 
     try {
+      // Update local status immediately
       setStatus(option.code);
 
-      // Simulate a brief delay for the check-in to process
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Capture location
+      let latitude: number | undefined;
+      let longitude: number | undefined;
+      try {
+        const loc = await getCurrentLocation();
+        if (loc) {
+          latitude = loc.latitude;
+          longitude = loc.longitude;
+        }
+      } catch {
+        console.warn("[CheckIn] Could not get location");
+      }
 
-      Alert.alert(
-        "Checked In",
-        `Your status has been updated to "${option.label}". This will be shared with the coordination centre.`,
-        [{ text: "OK", onPress: () => router.back() }],
-      );
+      // Send to backend API
+      const studentId = studentProfile?.id ?? "unknown";
+      const checkInData = {
+        studentId,
+        response: option.code,
+        latitude,
+        longitude,
+        channel: "data" as const,
+      };
+
+      const result = await postCheckIn(checkInData);
+
+      if (result) {
+        Alert.alert(
+          "Checked In",
+          `Your status has been updated to "${option.label}" and shared with the coordination centre.`,
+          [{ text: "OK", onPress: () => router.back() }],
+        );
+      } else {
+        Alert.alert(
+          "Saved Locally",
+          `Your status has been updated to "${option.label}" but could not reach the server. It will sync when connectivity is restored.`,
+          [{ text: "OK", onPress: () => router.back() }],
+        );
+      }
     } catch {
       Alert.alert("Error", "Failed to update your status. Please try again.");
     } finally {

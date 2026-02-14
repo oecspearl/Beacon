@@ -218,8 +218,14 @@ export default function RegistrationScreen() {
     };
 
     try {
-      const result = await postStudentRegistration(apiPayload);
+      const result = await postStudentRegistration(apiPayload) as { data?: { id?: string } } | null;
       setSubmitting(false);
+
+      // Use server-generated UUID if available
+      if (result?.data?.id) {
+        profile.id = result.data.id;
+        setStudentProfile(profile);
+      }
 
       if (result) {
         Alert.alert("Registration Complete", "Your profile has been registered successfully.", [
